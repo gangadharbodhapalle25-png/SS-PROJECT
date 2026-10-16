@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>MotionLab | Live Accelerometer Analysis</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--bg:#0b1120;--panel:#111b2e;--panel2:#17243a;--text:#eef4ff;--muted:#9aa9c2;--cyan:#43d9ff;--violet:#a78bfa;--green:#4ade80;--orange:#fb923c;--red:#fb7185;--border:#25344c}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#162947 0,#0b1120 42%);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{max-width:1250px;margin:auto;padding:26px 20px 14px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;gap:12px;align-items:center}.logo{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#43d9ff,#8b5cf6);display:grid;place-items:center;color:#08111f;font-size:24px;font-weight:900}
+h1{font-size:clamp(22px,4vw,32px);line-height:1.1;margin:0}.subtitle{color:var(--muted);margin-top:5px;font-size:13px}
+.status{border:1px solid var(--border);background:#101a2b;padding:8px 12px;border-radius:999px;color:var(--muted);font-size:12px}.dot{display:inline-block;width:8px;height:8px;background:#64748b;border-radius:50%;margin-right:7px}.dot.live{background:var(--green);box-shadow:0 0 10px #4ade8080}
+main{max-width:1250px;margin:auto;padding:8px 20px 40px}.notice{padding:13px 15px;background:#10283a;border:1px solid #20506a;border-radius:14px;color:#c8efff;font-size:13px;margin-bottom:18px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center}.btn{border:0;border-radius:11px;padding:11px 16px;font-weight:700;cursor:pointer;color:#08111f;background:var(--cyan)}.btn.secondary{background:#263650;color:var(--text);border:1px solid #3a4c68}.btn.danger{background:#4a2030;color:#ffdce4;border:1px solid #773348}.btn:disabled{opacity:.4;cursor:not-allowed}select{background:#101a2b;color:var(--text);border:1px solid var(--border);padding:10px;border-radius:10px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:14px}.card{background:linear-gradient(145deg,#121e32,#0f192a);border:1px solid var(--border);border-radius:17px;padding:17px;min-width:0;box-shadow:0 10px 28px #00000010}.metric-label{color:var(--muted);font-size:12px;letter-spacing:.05em;text-transform:uppercase}.metric{font-size:clamp(23px,3vw,32px);font-weight:750;letter-spacing:-.04em;margin:5px 0 0;overflow-wrap:anywhere}.unit{font-size:13px;color:var(--muted);font-weight:500;letter-spacing:0}.small{font-size:12px;color:var(--muted);margin-top:4px}
+.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:22px 0 10px}.section-title h2{font-size:17px;margin:0}.section-title span{font-size:12px;color:var(--muted)}
+.charts{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}.chartbox{height:300px;position:relative}.chartbox.tall{height:330px}.chart-note{color:var(--muted);font-size:12px;margin-top:10px}
+.axes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.axis-card{height:230px}
+.activity{display:flex;align-items:center;gap:13px}.activity-icon{width:48px;height:48px;border-radius:14px;background:#21314a;display:grid;place-items:center;font-size:23px}.activity-name{font-size:22px;font-weight:750}.activity-desc{font-size:12px;color:var(--muted)}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--border);white-space:nowrap}th{color:var(--muted);font-weight:600}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:25px 10px 0}
+@media(max-width:850px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.charts{grid-template-columns:1fr}.axes{grid-template-columns:1fr}.axis-card{height:220px}.chartbox{height:270px}}
+@media(max-width:420px){main{padding:8px 12px 30px}header{padding:20px 12px 12px}.card{padding:13px}.metric{font-size:24px}.controls .btn{flex:1}.notice{font-size:12px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo">〰</div><div><h1>MotionLab</h1><div class="subtitle">Smartphone Accelerometer · Live Signal Analysis</div></div></div>
+  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">Sensor stopped</span></div>
+</header>
+<main>
+  <div class="notice"><b>How to use:</b> Open this page on your phone, tap <b>Start Sensor</b>, and allow motion access if asked. Place your phone securely in your pocket or hand and move safely. Sensor access requires a compatible device/browser and HTTPS.</div>
+  <div class="controls">
+    <button class="btn" id="startBtn">▶ Start Sensor</button>
+    <button class="btn danger" id="stopBtn" disabled>■ Stop</button>
+    <button class="btn secondary" id="clearBtn">↺ Clear Data</button>
+    <button class="btn secondary" id="csvBtn">↓ Export CSV</button>
+    <label for="activitySelect" class="small">Activity label:</label>
+    <select id="activitySelect"><option>Unlabelled</option><option>Standing</option><option>Walking</option><option>Running</option><option>Other</option></select>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="metric-label">Acceleration X</div><div class="metric" id="mx">— <span class="unit">m/s²</span></div><div class="small">Live axis value</div></div>
+    <div class="card"><div class="metric-label">Acceleration Y</div><div class="metric" id="my">— <span class="unit">m/s²</span></div><div class="small">Live axis value</div></div>
+    <div class="card"><div class="metric-label">Acceleration Z</div><div class="metric" id="mz">— <span class="unit">m/s²</span></div><div class="small">Live axis value</div></div>
+    <div class="card"><div class="metric-label">Total magnitude</div><div class="metric" id="mmag">— <span class="unit">m/s²</span></div><div class="small">√(x² + y² + z²)</div></div>
+    <div class="card"><div class="metric-label">Samples captured</div><div class="metric" id="samples">0</div><div class="small">Current recording</div></div>
+    <div class="card"><div class="metric-label">Elapsed time</div><div class="metric" id="elapsed">0.0 <span class="unit">s</span></div><div class="small">Recording duration</div></div>
+    <div class="card"><div class="metric-label">Magnitude standard deviation</div><div class="metric" id="std">— <span class="unit">m/s²</span></div><div class="small">Movement variability</div></div>
+    <div class="card"><div class="metric-label">Estimated activity</div><div class="metric activity"><div class="activity-icon" id="actIcon">?</div><div><div class="activity-name" id="activity">Waiting</div><div class="activity-desc" id="activityDesc">Start recording to estimate</div></div></div></div>
+  </div>
+
+  <div class="section-title"><h2>Live 3-axis acceleration</h2><span>Recent samples · m/s²</span></div>
+  <div class="axes">
+    <div class="card axis-card"><div class="metric-label">X axis</div><div class="chartbox" style="height:175px"><canvas id="xChart"></canvas></div></div>
+    <div class="card axis-card"><div class="metric-label">Y axis</div><div class="chartbox" style="height:175px"><canvas id="yChart"></canvas></div></div>
+    <div class="card axis-card"><div class="metric-label">Z axis</div><div class="chartbox" style="height:175px"><canvas id="zChart"></canvas></div></div>
+  </div>
+
+  <div class="charts">
+    <div><div class="section-title"><h2>Acceleration magnitude</h2><span>Time-domain signal</span></div><div class="card"><div class="chartbox tall"><canvas id="magChart"></canvas></div><div class="chart-note">Magnitude combines all three axes. Sensor implementations may report acceleration with or without gravity; this page uses the browser's available acceleration values.</div></div></div>
+    <div><div class="section-title"><h2>Activity comparison</h2><span>Standard deviation</span></div><div class="card"><div class="chartbox tall"><canvas id="barChart"></canvas></div><div class="chart-note">Compare variability between recordings. Use the activity label selector for each trial, then export CSV to save the raw data.</div></div></div>
+  </div>
+
+  <div class="section-title"><h2>Frequency spectrum (FFT)</h2><span>Approximate dominant frequency</span></div>
+  <div class="card"><div class="chartbox tall"><canvas id="fftChart"></canvas></div><div class="chart-note" id="fftNote">Collect at least a few seconds of data to estimate the dominant frequency. This is a lightweight in-browser FFT estimate for demonstration, not a calibrated instrument.</div></div>
+
+  <div class="section-title"><h2>Recording summary</h2><span>Saved in this page session</span></div>
+  <div class="card table-wrap"><table><thead><tr><th>Trial</th><th>Label</th><th>Duration (s)</th><th>Samples</th><th>Mean magnitude</th><th>Std. dev.</th><th>Peak frequency (Hz)</th></tr></thead><tbody id="summaryBody"><tr><td colspan="7">No completed recordings yet.</td></tr></tbody></table></div>
+  <footer>Signals & Systems FA2 · Fourier analysis and sensor data demonstration. Motion data is processed locally in this browser and is not uploaded by this page.</footer>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const MAX_POINTS = 180;
+  let recording = false, startTime = 0, samples = [], trialSummaries = [], lastUi = 0, raf = null;
+  const safe = v => Number.isFinite(v) ? v : null;
+  const fmt = (v, d=2) => Number.isFinite(v) ? v.toFixed(d) : "—";
+  const axisOptions = {
+    animation:false, responsive:true, maintainAspectRatio:false,
+    interaction:{intersect:false,mode:'index'},
+    plugins:{legend:{display:false},tooltip:{enabled:true}},
+    scales:{x:{ticks:{color:'#9aa9c2',maxTicksLimit:5},grid:{color:'#25344c'},title:{display:true,text:'Time (s)',color:'#9aa9c2'}},
+            y:{ticks:{color:'#9aa9c2',maxTicksLimit:5},grid:{color:'#25344c'}}}
+  };
+  function makeLine(id, label, color, xTitle='Time (s)') {
+    const opts = structuredClone(axisOptions); opts.scales.x.title.text=xTitle;
+    return new Chart($(id), {type:'line',data:{labels:[],datasets:[{label,data:[],borderColor:color,backgroundColor:color+'22',borderWidth:2,pointRadius:0,tension:.12,fill:false}]},options:opts});
+  }
+  const xChart=makeLine('xChart','X',' #43d9ff'.trim()), yChart=makeLine('yChart','Y','#a78bfa'), zChart=makeLine('zChart','Z','#4ade80');
+  const magChart=makeLine('magChart','Magnitude','#fb923c');
+  const fftChart=new Chart($('fftChart'),{type:'bar',data:{labels:[],datasets:[{label:'Amplitude',data:[],backgroundColor:'#43d9ff'}]},options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9aa9c2',maxTicksLimit:10},grid:{color:'#25344c'},title:{display:true,text:'Frequency (Hz)',color:'#9aa9c2'}},y:{ticks:{color:'#9aa9c2'},grid:{color:'#25344c'},title:{display:true,text:'Relative amplitude',color:'#9aa9c2'}}}}});
+  const barChart=new Chart($('barChart'),{type:'bar',data:{labels:[],datasets:[{label:'Std. deviation (m/s²)',data:[],backgroundColor:['#43d9ff','#a78bfa','#4ade80','#fb923c','#fb7185']}]},options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9aa9c2'},grid:{display:false}},y:{beginAtZero:true,ticks:{color:'#9aa9c2'},grid:{color:'#25344c'},title:{display:true,text:'m/s²',color:'#9aa9c2'}}}}});
+  function updateChart(chart, labels, data) { chart.data.labels=labels; chart.data.datasets[0].data=data; chart.update('none'); }
+  function stats(arr) {
+    const a=arr.filter(Number.isFinite); if(!a.length)return {mean:NaN,std:NaN,min:NaN,max:NaN};
+    const mean=a.reduce((s,v)=>s+v,0)/a.length;
+    return {mean,std:Math.sqrt(a.reduce((s,v)=>s+(v-mean)**2,0)/a.length),min:Math.min(...a),max:Math.max(...a)};
+  }
+  function dominantFrequency(data, times) {
+    const n=data.length; if(n<32)return {freq:NaN,labels:[],amps:[]};
+    const dt=(times[times.length-1]-times[0])/(n-1); if(!(dt>0))return {freq:NaN,labels:[],amps:[]};
+    const fs=1/dt, mean=stats(data).mean, amps=[], freqs=[];
+    // Direct DFT for a short, downsampled segment; bounded to keep mobile browsers responsive.
+    const step=Math.max(1,Math.floor(n/256)), vals=[], ts=[];
+    for(let i=0;i<n;i+=step){vals.push(data[i]);ts.push(times[i]);}
+    const m=vals.length, sampleDt=(ts[m-1]-ts[0])/(m-1), rate=1/sampleDt;
+    const maxK=Math.min(Math.floor(m/2),60);
+    for(let k=1;k<=maxK;k++){
+      let re=0,im=0;
+      for(let j=0;j<m;j++){
+        const w=0.5-0.5*Math.cos(2*Math.PI*j/(m-1 || 1));
+        const v=(vals[j]-stats(vals).mean)*w, angle=2*Math.PI*k*j/m;
+        re+=v*Math.cos(angle); im-=v*Math.sin(angle);
+      }
+      amps.push(2*Math.sqrt(re*re+im*im)/m); freqs.push(k*rate/m);
+    }
+    let best=0; for(let i=1;i<amps.length;i++)if(amps[i]>amps[best])best=i;
+    return {freq:freqs[best]||NaN,labels:freqs.map(v=>v.toFixed(1)),amps};
+  }
+  function estimateActivity(std, freq) {
+    if(!Number.isFinite(std))return ['Waiting','?','Collecting samples'];
+    // Simple demonstration heuristic, not a validated classifier.
+    if(std<0.18)return ['Possibly standing','Ⅱ','Low signal variability'];
+    if(Number.isFinite(freq)&&freq>=2.2)return ['Possibly running','↗','Higher-frequency movement'];
+    if(Number.isFinite(freq)&&freq>=0.5)return ['Possibly walking','↔','Periodic movement detected'];
+    return ['Movement detected','∿','Not enough evidence for a specific activity'];
+  }
+  function renderSummary() {
+    const body=$('summaryBody');
+    if(!trialSummaries.length){body.innerHTML='<tr><td colspan="7">No completed recordings yet.</td></tr>';return;}
+    body.innerHTML=trialSummaries.map((t,i)=>`<tr><td>${i+1}</td><td>${t.label}</td><td>${fmt(t.duration,1)}</td><td>${t.count}</td><td>${fmt(t.mean)}</td><td>${fmt(t.std)}</td><td>${fmt(t.freq,2)}</td></tr>`).join('');
+    barChart.data.labels=trialSummaries.map(t=>t.label+' '+(trialSummaries.filter(x=>x.label===t.label).length>1?'#'+(trialSummaries.filter(x=>x.label===t.label).length):''));
+    barChart.data.datasets[0].data=trialSummaries.map(t=>t.std); barChart.update();
+  }
+  function render() {
+    if(!samples.length)return;
+    const recent=samples.slice(-MAX_POINTS), labels=recent.map(s=>s.t.toFixed(1));
+    updateChart(xChart,labels,recent.map(s=>s.x)); updateChart(yChart,labels,recent.map(s=>s.y)); updateChart(zChart,labels,recent.map(s=>s.z)); updateChart(magChart,labels,recent.map(s=>s.mag));
+    const cur=samples[samples.length-1], allMag=samples.map(s=>s.mag), st=stats(allMag), ts=samples.map(s=>s.t), fft=dominantFrequency(allMag,ts);
+    $('mx').innerHTML=`${fmt(cur.x)} <span class="unit">m/s²</span>`;
+    $('my').innerHTML=`${fmt(cur.y)} <span class="unit">m/s²</span>`;
+    $('mz').innerHTML=`${fmt(cur.z)} <span class="unit">m/s²</span>`;
+    $('mmag').innerHTML=`${fmt(cur.mag)} <span class="unit">m/s²</span>`;
+    $('samples').textContent=samples.length; $('elapsed').innerHTML=`${fmt(cur.t,1)} <span class="unit">s</span>`;
+    $('std').innerHTML=`${fmt(st.std)} <span class="unit">m/s²</span>`;
+    const [act,icon,desc]=estimateActivity(st.std,fft.freq); $('activity').textContent=act; $('actIcon').textContent=icon; $('activityDesc').textContent=desc;
+    updateChart(fftChart,fft.labels,fft.amps);
+    $('fftNote').textContent=Number.isFinite(fft.freq)?`Approximate strongest non-zero frequency: ${fmt(fft.freq,2)} Hz. Frequency estimates depend on phone, sample timing, movement and recording length.`:'Collect at least a few seconds of data to estimate the dominant frequency.';
+  }
+  function onMotion(e) {
+    const a=e.acceleration || e.accelerationIncludingGravity;
+    if(!a || !Number.isFinite(a.x) || !Number.isFinite(a.y) || !Number.isFinite(a.z))return;
+    const t=(performance.now()-startTime)/1000, x=a.x,y=a.y,z=a.z, mag=Math.sqrt(x*x+y*y+z*z);
+    samples.push({t,x,y,z,mag});
+    if(samples.length>6000)samples.shift();
+    const now=performance.now(); if(now-lastUi>120){lastUi=now;render();}
+  }
+  async function start() {
+    if(recording)return;
+    if(!('DeviceMotionEvent' in window)){alert('This browser does not expose motion sensor data. Try a modern browser on a phone with motion sensors, using the HTTPS website.');return;}
+    try{
+      if(typeof DeviceMotionEvent.requestPermission==='function'){
+        const permission=await DeviceMotionEvent.requestPermission();
+        if(permission!=='granted'){alert('Motion permission was not granted. Allow motion access and tap Start Sensor again.');return;}
+      }
+      samples=[]; startTime=performance.now(); lastUi=0; recording=true;
+      window.addEventListener('devicemotion',onMotion);
+      $('startBtn').disabled=true; $('stopBtn').disabled=false;
+      $('statusText').textContent='Sensor running'; $('statusDot').classList.add('live');
+      $('activity').textContent='Calibrating'; $('activityDesc').textContent='Move your phone gently to collect data';
+    }catch(err){alert('Could not start the sensor. Open the site over HTTPS and check browser permissions.');}
+  }
+  function stop() {
+    if(!recording)return;
+    recording=false; window.removeEventListener('devicemotion',onMotion);
+    $('startBtn').disabled=false; $('stopBtn').disabled=true;
+    $('statusText').textContent='Recording stopped'; $('statusDot').classList.remove('live');
+    if(samples.length){
+      const st=stats(samples.map(s=>s.mag)), fft=dominantFrequency(samples.map(s=>s.mag),samples.map(s=>s.t));
+      trialSummaries.push({label:$('activitySelect').value,duration:samples[samples.length-1].t,count:samples.length,mean:st.mean,std:st.std,freq:fft.freq});
+      renderSummary();
+    }
+    render();
+  }
+  $('startBtn').addEventListener('click',start); $('stopBtn').addEventListener('click',stop);
+  $('clearBtn').addEventListener('click',()=>{if(recording)stop();samples=[];[xChart,yChart,zChart,magChart,fftChart].forEach(c=>{c.data.labels=[];c.data.datasets[0].data=[];c.update();});$('mx').innerHTML='— <span class="unit">m/s²</span>';$('my').innerHTML='— <span class="unit">m/s²</span>';$('mz').innerHTML='— <span class="unit">m/s²</span>';$('mmag').innerHTML='— <span class="unit">m/s²</span>';$('samples').textContent='0';$('elapsed').innerHTML='0.0 <span class="unit">s</span>';$('std').innerHTML='— <span class="unit">m/s²</span>';$('activity').textContent='Waiting';$('activityDesc').textContent='Start recording to estimate';$('actIcon').textContent='?';});
+  $('csvBtn').addEventListener('click',()=>{
+    if(!samples.length){alert('No samples to export yet. Start the sensor first.');return;}
+    const rows=[['time_s','acceleration_x_m_s2','acceleration_y_m_s2','acceleration_z_m_s2','magnitude_m_s2','activity_label'].join(',')];
+    for(const s of samples)rows.push([s.t,s.x,s.y,s.z,s.mag,$('activitySelect').value].join(','));
+    const blob=new Blob([rows.join('\n')],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='motionlab_accelerometer.csv';a.click();URL.revokeObjectURL(url);
+  });
+  renderSummary();
+})();
+</script>
+</body>
+</html>
